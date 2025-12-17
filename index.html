@@ -34,7 +34,7 @@
   <p>Click a node to move the leak.</p>
 
   <div style="width:100%; display:flex; justify-content:center;">
-    <svg width="100%" height="320" viewBox="0 0 600 320"></svg>
+    <svg width="100%" height="360" viewBox="0 0 600 360"></svg>
   </div>
 
   <div class="eq-box">
@@ -45,34 +45,37 @@
 <script>
 const RADIUS = 25;
 
-/* --------------------------
-   NODE POSITIONS (House Shape)
-   Constraints:
-   y1 = y3, y4 = y5,
-   x1 = x5, x3 = x4
-   -------------------------- */
+/* -------------------------------------
+   UPDATED NODE POSITIONS (More spacing)
+   -------------------------------------
+         (2)
+        /   \
+     (1)     (3)
+        \   /
+         (5)
+         |
+         (4)
+---------------------------------------- */
 
 const nodePositions = [
   { x: 200, y: 150 },  // 1 (left middle)
   { x: 300, y:  80 },  // 2 (roof peak)
   { x: 400, y: 150 },  // 3 (right middle)
-  { x: 400, y: 220 },  // 4 (bottom right)
-  { x: 200, y: 220 },  // 5 (bottom left)
+  { x: 400, y: 260 },  // 4 (bottom right)  <-- moved down
+  { x: 200, y: 260 },  // 5 (bottom left)   <-- moved down
 ];
 
 // 5-cycle: 1→2→3→4→5→1
-// Using a_{ji} for flow i→j
 const links = [
-  { source: 0, target: 1, label: "a_{21}" }, // 1→2
-  { source: 1, target: 2, label: "a_{32}" }, // 2→3
-  { source: 2, target: 3, label: "a_{43}" }, // 3→4
-  { source: 3, target: 4, label: "a_{54}" }, // 4→5
-  { source: 4, target: 0, label: "a_{15}" }, // 5→1
+  { source:0, target:1, label:"a_{21}" },
+  { source:1, target:2, label:"a_{32}" },
+  { source:2, target:3, label:"a_{43}" },
+  { source:3, target:4, label:"a_{54}" },
+  { source:4, target:0, label:"a_{15}" },
 ];
 
 let leakNode = 0;
 
-// Placeholder IO equations (you can replace with actual ones later)
 const eqLookup = {
   0: "\\text{IO equation with leak in compartment 1 (placeholder)}",
   1: "\\text{IO equation with leak in compartment 2 (placeholder)}",
@@ -133,6 +136,7 @@ svg.selectAll("line.link")
   .each(function(d){
     const s = nodePositions[d.source];
     const t = nodePositions[d.target];
+
     const dx = t.x - s.x;
     const dy = t.y - s.y;
     const L  = Math.hypot(dx,dy);
@@ -145,12 +149,7 @@ svg.selectAll("line.link")
     this.y2.baseVal.value = t.y - uy * RADIUS;
   });
 
-/* ---------- EDGE LABELS (outside the cycle) ---------- */
-const center = {
-  x: d3.mean(nodePositions, p => p.x),
-  y: d3.mean(nodePositions, p => p.y)
-};
-
+/* ---------- EDGE LABELS (simple midpoint) ---------- */
 svg.selectAll(".edge-label")
   .data(links)
   .enter()
@@ -158,54 +157,27 @@ svg.selectAll(".edge-label")
   .each(function(d){
     const s = nodePositions[d.source];
     const t = nodePositions[d.target];
-
-    const dx = t.x - s.x;
-    const dy = t.y - s.y;
-    const L  = Math.hypot(dx,dy);
-    const ux = dx / L;
-    const uy = dy / L;
-
-    // Trimmed endpoints
-    const ex1 = s.x + ux * RADIUS;
-    const ey1 = s.y + uy * RADIUS;
-    const ex2 = t.x - ux * RADIUS;
-    const ey2 = t.y - uy * RADIUS;
-
-    // Midpoint of visible edge
-    const mx = (ex1 + ex2) / 2;
-    const my = (ey1 + ey2) / 2;
-
-    // Outward direction from center
-    let ox = mx - center.x;
-    let oy = my - center.y;
-    const oLen = Math.hypot(ox,oy);
-    if (oLen !== 0) { ox /= oLen; oy /= oLen; }
-
-    const offset = 18; // how far outside the house
-    const lx = mx + ox * offset;
-    const ly = my + oy * offset;
+    const midX = (s.x + t.x)/2;
+    const midY = (s.y + t.y)/2;
 
     d3.select(this)
-      .attr("x", lx - 20)
-      .attr("y", ly - 15)
+      .attr("x", midX - 20)
+      .attr("y", midY - 15)
       .attr("width", 40)
       .attr("height", 30)
       .append("xhtml:div")
       .style("text-align","center")
       .style("font-size","14px")
-      .each(function(){
-        katex.render(d.label, this, { throwOnError:false });
-      });
+      .each(function(){ katex.render(d.label,this,{throwOnError:false}); });
   });
 
-/* ---------- INPUT (into node 1) ---------- */
+/* ---------- INPUT (into 1) ---------- */
 svg.append("line")
   .attr("x1", nodePositions[0].x - RADIUS - 60)
   .attr("y1", nodePositions[0].y)
   .attr("x2", nodePositions[0].x - RADIUS)
   .attr("y2", nodePositions[0].y)
-  .attr("stroke","black")
-  .attr("stroke-width",3)
+  .attr("stroke","black").attr("stroke-width",3)
   .attr("marker-end","url(#arrow)");
 
 svg.append("text")
@@ -213,7 +185,7 @@ svg.append("text")
   .attr("y", nodePositions[0].y - 5)
   .text("in");
 
-/* ---------- OUTPUT (from node 3, no arrowhead) ---------- */
+/* ---------- OUTPUT (from 3) ---------- */
 svg.append("line")
   .attr("x1", nodePositions[2].x + RADIUS)
   .attr("y1", nodePositions[2].y)
@@ -265,7 +237,7 @@ function drawLeak(){
     });
 }
 
-/* ---------- EQUATION RENDER ---------- */
+/* ---------- EQUATION ---------- */
 function updateEquation(){
   katex.render(eqLookup[leakNode], document.getElementById("equation"), {
     throwOnError:false
