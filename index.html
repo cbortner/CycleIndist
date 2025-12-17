@@ -46,7 +46,7 @@
 const RADIUS = 25;
 
 /* -------------------------------------
-   UPDATED NODE POSITIONS (More spacing)
+   NODE POSITIONS (More spacing)
    -------------------------------------
          (2)
         /   \
@@ -61,8 +61,8 @@ const nodePositions = [
   { x: 200, y: 150 },  // 1 (left middle)
   { x: 300, y:  80 },  // 2 (roof peak)
   { x: 400, y: 150 },  // 3 (right middle)
-  { x: 400, y: 260 },  // 4 (bottom right)  <-- moved down
-  { x: 200, y: 260 },  // 5 (bottom left)   <-- moved down
+  { x: 400, y: 260 },  // 4 (bottom right)
+  { x: 200, y: 260 },  // 5 (bottom left)
 ];
 
 // 5-cycle: 1→2→3→4→5→1
@@ -85,6 +85,12 @@ const eqLookup = {
 };
 
 const svg = d3.select("svg");
+
+// Compute geometric center of the cycle (used for leak direction & could be reused)
+const center = {
+  x: d3.mean(nodePositions, p => p.x),
+  y: d3.mean(nodePositions, p => p.y)
+};
 
 /* ---------- MARKERS ---------- */
 const defs = svg.append("defs");
@@ -205,29 +211,50 @@ svg.append("text")
   .attr("y", nodePositions[2].y - 5)
   .text("out");
 
-/* ---------- LEAK INDICATOR ---------- */
+/* ---------- LEAK INDICATOR (always toward inside) ---------- */
 function drawLeak(){
   svg.selectAll(".leak-indicator").remove();
   svg.selectAll(".leak-label").remove();
 
   const pos = nodePositions[leakNode];
 
+  // Vector from node to center (points toward inside of the cycle)
+  let vx = center.x - pos.x;
+  let vy = center.y - pos.y;
+  const vLen = Math.hypot(vx, vy);
+  const ux = vx / vLen;
+  const uy = vy / vLen;
+
+  // Start just inside the node boundary
+  const startX = pos.x + ux * RADIUS;
+  const startY = pos.y + uy * RADIUS;
+
+  // End further toward the center
+  const leakLen = 35; // length of leak arrow
+  const endX = startX + ux * leakLen;
+  const endY = startY + uy * leakLen;
+
   svg.append("line")
     .attr("class","leak-indicator")
-    .attr("x1", pos.x)
-    .attr("y1", pos.y + RADIUS + 5)
-    .attr("x2", pos.x)
-    .attr("y2", pos.y + RADIUS + 40)
+    .attr("x1", startX)
+    .attr("y1", startY)
+    .attr("x2", endX)
+    .attr("y2", endY)
     .attr("stroke","red")
     .attr("stroke-width",2)
     .attr("marker-end","url(#leak-arrow)");
 
+  // Place leak label slightly beyond the arrow tip, still toward the center
+  const labelOffset = 10;
+  const labelX = endX + ux * labelOffset;
+  const labelY = endY + uy * labelOffset;
+
   svg.append("foreignObject")
     .attr("class","leak-label")
-    .attr("x", pos.x - 20)
-    .attr("y", pos.y + RADIUS + 40)
-    .attr("width", 50)
-    .attr("height", 30)
+    .attr("x", labelX - 20)
+    .attr("y", labelY - 15)
+    .attr("width",50)
+    .attr("height",30)
     .append("xhtml:div")
     .style("color","red")
     .style("text-align","center")
