@@ -40,7 +40,7 @@
   <p>Click a node to move the leak.</p>
 
   <div style="width: 100%; overflow-x: auto; display: flex; justify-content: center;">
-    <svg width="100%" height="220" viewBox="0 0 560 220" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg width="100%" height="240" viewBox="0 0 560 240" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
 
   <div class="eq-box">
@@ -59,10 +59,10 @@
     ];
 
     const nodePositions = [
-      { x: 150, y: 80 },   // 1 (left)
-      { x: 270, y: 40 },   // 2 (top)
-      { x: 390, y: 80 },   // 3 (right)
-      { x: 270, y: 120 },  // 4 (bottom)
+      { x: 150, y: 100 },
+      { x: 270, y: 40 },
+      { x: 390, y: 100 },
+      { x: 270, y: 160 },
     ];
 
     const links = [
@@ -83,7 +83,7 @@
 
     const svg = d3.select("svg");
 
-    // MARKERS
+    // --- Markers ---
     const defs = svg.append("defs");
 
     defs.append("marker")
@@ -95,7 +95,7 @@
       .attr("markerHeight", 6)
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 z")
+      .attr("d", "M0 0 L10 5 L0 10 Z")
       .attr("fill", "gray");
 
     defs.append("marker")
@@ -107,7 +107,7 @@
       .attr("markerHeight", 6)
       .attr("orient", "auto")
       .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 z")
+      .attr("d", "M0 0 L10 5 L0 10 Z")
       .attr("fill", "red");
 
     defs.append("marker")
@@ -119,77 +119,30 @@
       .attr("markerHeight", 6)
       .attr("orient", "auto-start-reverse")
       .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 z")
+      .attr("d", "M0 0 L10 5 L0 10 Z")
       .attr("fill", "black");
 
-    // NODES
+    // --- Nodes ---
     const nodeGroup = svg.selectAll("g.node")
       .data(nodes)
       .enter()
       .append("g")
       .attr("class", "node")
-      .attr("transform", (d) => `translate(${nodePositions[d.id].x}, ${nodePositions[d.id].y})`)
-      .on("click", (event, d) => {
-        leakNode = d.id;
-        drawLeak();
-        updateEquation();
-      });
+      .attr("transform", d => `translate(${nodePositions[d.id].x}, ${nodePositions[d.id].y})`)
+      .on("click", (event, d) => { leakNode = d.id; drawLeak(); updateEquation(); });
 
     nodeGroup.append("circle").attr("r", RADIUS);
-    nodeGroup.append("text")
-      .attr("text-anchor", "middle")
-      .attr("dy", 5)
-      .text(d => d.label);
+    nodeGroup.append("text").attr("dy", 5).attr("text-anchor", "middle").text(d => d.label);
 
-    // EDGES — edge-to-edge
-    svg.selectAll("line.link")
+    // --- Edges (trimmed to circle) ---
+    const edgeLines = svg.selectAll("line.link")
       .data(links)
       .enter()
       .append("line")
       .attr("class", "link")
       .attr("stroke", "gray")
       .attr("stroke-width", 2)
-      .attr("x1", d => {
-        const { x: sx, y: sy } = nodePositions[d.source];
-        const { x: tx, y: ty } = nodePositions[d.target];
-        const dx = tx - sx, dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        return sx + (dx / len) * RADIUS;
-      })
-      .attr("y1", d => {
-        const { x: sx, y: sy } = nodePositions[d.source];
-        const { x: tx, y: ty } = nodePositions[d.target];
-        const dx = tx - sx, dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        return sy + (dy / len) * RADIUS;
-      })
-      .attr("x2", d => {
-        const { x: sx, y: sy } = nodePositions[d.source];
-        const { x: tx, y: ty } = nodePositions[d.target];
-        const dx = tx - sx, dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        return tx - (dx / len) * RADIUS;
-      })
-      .attr("y2", d => {
-        const { x: sx, y: sy } = nodePositions[d.source];
-        const { x: tx, y: ty } = nodePositions[d.target];
-        const dx = tx - sx, dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        return ty - (dy / len) * RADIUS;
-      })
-      .attr("marker-end", "url(#link-arrow)");
-
-    // CENTER OF CYCLE
-    const center = {
-      x: d3.mean(nodePositions, p => p.x),
-      y: d3.mean(nodePositions, p => p.y)
-    };
-
-    // LABELS — outside, but closer to center middle vertices
-    svg.selectAll(".edge-label")
-      .data(links)
-      .enter()
-      .append("foreignObject")
+      .attr("marker-end", "url(#link-arrow)")
       .each(function(d) {
         const sx = nodePositions[d.source].x;
         const sy = nodePositions[d.source].y;
@@ -200,22 +153,52 @@
         const len = Math.hypot(dx, dy);
         const ux = dx / len, uy = dy / len;
 
+        this.x1.baseVal.value = sx + ux * RADIUS;
+        this.y1.baseVal.value = sy + uy * RADIUS;
+        this.x2.baseVal.value = tx - ux * RADIUS;
+        this.y2.baseVal.value = ty - uy * RADIUS;
+      });
+
+    // --- Compute cycle center ---
+    const center = {
+      x: d3.mean(nodePositions, p => p.x),
+      y: d3.mean(nodePositions, p => p.y)
+    };
+
+    // --- Edge Labels (outside, but shifted toward vertices 2 & 4) ---
+    svg.selectAll(".edge-label")
+      .data(links)
+      .enter()
+      .append("foreignObject")
+      .each(function(d) {
+
+        const sx = nodePositions[d.source].x;
+        const sy = nodePositions[d.source].y;
+        const tx = nodePositions[d.target].x;
+        const ty = nodePositions[d.target].y;
+
+        const dx = tx - sx, dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len, uy = dy / len;
+
+        // Trimmed endpoints
         const ex1 = sx + ux * RADIUS;
         const ey1 = sy + uy * RADIUS;
         const ex2 = tx - ux * RADIUS;
         const ey2 = ty - uy * RADIUS;
 
-        const mx = (ex1 + ex2) / 2;
-        const my = (ey1 + ey2) / 2;
+        // NEW: shift label toward target vertex (pull toward middle vertices 2 and 4)
+        const t = 0.65; // 0.5 = midpoint, >0.5 moves toward target
+        const mx = ex1 + (ex2 - ex1) * t;
+        const my = ey1 + (ey2 - ey1) * t;
 
-        let ox = mx - center.x;
-        let oy = my - center.y;
+        // Outward vector
+        let ox = mx - center.x, oy = my - center.y;
         const olen = Math.hypot(ox, oy);
-        ox /= olen;
-        oy /= olen;
+        ox /= olen; oy /= olen;
 
-        // OUTWARD, but smaller so closer to middle two vertices
-        const offset = 16;
+        // Offset outside
+        const offset = 14;
 
         const lx = mx + ox * offset;
         const ly = my + oy * offset;
@@ -228,12 +211,10 @@
           .append("xhtml:div")
           .style("text-align", "center")
           .style("font-size", "14px")
-          .each(function() {
-            katex.render(d.label, this, { throwOnError: false });
-          });
+          .each(function() { katex.render(d.label, this, { throwOnError: false }); });
       });
 
-    // INPUT ARROW
+    // --- Input (left) ---
     svg.append("line")
       .attr("x1", nodePositions[0].x - RADIUS - 60)
       .attr("y1", nodePositions[0].y)
@@ -244,12 +225,11 @@
       .attr("marker-end", "url(#arrow)");
 
     svg.append("text")
-      .attr("x", nodePositions[0].x - RADIUS - 70)
+      .attr("x", nodePositions[0].x - RADIUS - 72)
       .attr("y", nodePositions[0].y - 5)
-      .attr("fill", "black")
       .text("in");
 
-    // OUTPUT — line only (no arrowhead)
+    // --- Output (right, no arrowhead) ---
     svg.append("line")
       .attr("x1", nodePositions[2].x + RADIUS)
       .attr("y1", nodePositions[2].y)
@@ -265,12 +245,11 @@
       .attr("fill", "black");
 
     svg.append("text")
-      .attr("x", nodePositions[2].x + RADIUS + 70)
+      .attr("x", nodePositions[2].x + RADIUS + 72)
       .attr("y", nodePositions[2].y - 5)
-      .attr("fill", "black")
       .text("out");
 
-    // LEAK
+    // --- Leak ---
     function drawLeak() {
       svg.selectAll("line.leak-indicator").remove();
       svg.selectAll(".leak-label").remove();
@@ -280,9 +259,9 @@
       svg.append("line")
         .attr("class", "leak-indicator")
         .attr("x1", pos.x)
-        .attr("y1", pos.y + RADIUS + 5)
+        .attr("y1", pos.y + RADIUS + 6)
         .attr("x2", pos.x)
-        .attr("y2", pos.y + RADIUS + 40)
+        .attr("y2", pos.y + RADIUS + 42)
         .attr("stroke", "red")
         .attr("stroke-width", 2)
         .attr("marker-end", "url(#leak-arrow)");
@@ -290,19 +269,16 @@
       svg.append("foreignObject")
         .attr("class", "leak-label")
         .attr("x", pos.x - 20)
-        .attr("y", pos.y + RADIUS + 40)
+        .attr("y", pos.y + RADIUS + 42)
         .attr("width", 50)
         .attr("height", 30)
         .append("xhtml:div")
         .style("color", "red")
         .style("text-align", "center")
         .style("font-size", "14px")
-        .each(function() {
-          katex.render(`a_{0${leakNode + 1}}`, this, { throwOnError: false });
-        });
+        .each(function() { katex.render(`a_{0${leakNode + 1}}`, this, { throwOnError: false }); });
     }
 
-    // EQUATION
     function updateEquation() {
       katex.render(eqLookup[leakNode], document.getElementById("equation"), {
         throwOnError: false
@@ -311,6 +287,7 @@
 
     drawLeak();
     updateEquation();
+
   </script>
 </body>
 </html>
