@@ -38,7 +38,7 @@
   <h2>Skeletal Path Model</h2>
   <p>Click a node to move the leak.</p>
   <div style="width: 100%; overflow-x: auto; display: flex; justify-content: center;">
-    <svg width="100%" height="180" viewBox="0 0 560 180" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg width="100%" height="220" viewBox="0 0 560 220" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
 
   <div class="eq-box">
@@ -85,7 +85,9 @@
     const svg = d3.select("svg");
 
     // Define arrowhead markers
-    svg.append("defs").append("marker")
+    const defs = svg.append("defs");
+
+    defs.append("marker")
       .attr("id", "link-arrow")
       .attr("viewBox", "0 0 10 10")
       .attr("refX", 10)
@@ -97,7 +99,7 @@
       .attr("d", "M 0 0 L 10 5 L 0 10 z")
       .attr("fill", "gray");
 
-    svg.append("defs").append("marker")
+    defs.append("marker")
       .attr("id", "leak-arrow")
       .attr("viewBox", "0 0 10 10")
       .attr("refX", 10)
@@ -109,7 +111,7 @@
       .attr("d", "M 0 0 L 10 5 L 0 10 z")
       .attr("fill", "red");
 
-    svg.append("defs").append("marker")
+    defs.append("marker")
       .attr("id", "arrow")
       .attr("viewBox", "0 0 10 10")
       .attr("refX", 10)
@@ -198,34 +200,43 @@
       })
       .attr("marker-end", "url(#link-arrow)");
 
-    // Edge labels positioned offset perpendicular to the arrow segment
+    // Compute cycle center (average of node positions)
+    const center = {
+      x: d3.mean(nodePositions, p => p.x),
+      y: d3.mean(nodePositions, p => p.y)
+    };
+
+    // Edge labels positioned outward from the cycle center
     svg.selectAll(".edge-label")
       .data(links)
       .enter()
       .append("foreignObject")
       .each(function(d) {
+        // Source & target positions
         const sx = nodePositions[d.source].x;
         const sy = nodePositions[d.source].y;
         const tx = nodePositions[d.target].x;
         const ty = nodePositions[d.target].y;
 
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-
-        // Midpoint of the center-to-center segment
+        // Midpoint of center-to-center link
         const mx = (sx + tx) / 2;
         const my = (sy + ty) / 2;
 
-        // Unit perpendicular vector (rotated 90 degrees)
-        const px = -dy / len;
-        const py = dx / len;
+        // Outward vector: from center to midpoint
+        let ox = mx - center.x;
+        let oy = my - center.y;
 
-        // Distance to move label off the arrow
-        const offset = 18; // pixels
+        const olen = Math.hypot(ox, oy);
+        if (olen !== 0) {
+          ox /= olen;
+          oy /= olen;
+        }
 
-        const lx = mx + px * offset;
-        const ly = my + py * offset;
+        // Label offset radius (adjust as needed)
+        const offset = 28;
+
+        const lx = mx + ox * offset;
+        const ly = my + oy * offset;
 
         d3.select(this)
           .attr("x", lx - 20)
@@ -257,15 +268,14 @@
       .attr("fill", "black")
       .text("in");
 
-    // Draw output probe from compartment 3 (node 3) - horizontal to the right
+    // Draw output probe from compartment 3 (node 3) - horizontal to the right, no arrowhead
     svg.append("line")
       .attr("x1", nodePositions[2].x + RADIUS)
       .attr("y1", nodePositions[2].y)
       .attr("x2", nodePositions[2].x + RADIUS + 60)
       .attr("y2", nodePositions[2].y)
       .attr("stroke", "black")
-      .attr("stroke-width", 3)
-      .attr("marker-end", "url(#arrow)");
+      .attr("stroke-width", 3); // no marker-end
 
     svg.append("circle")
       .attr("cx", nodePositions[2].x + RADIUS + 60)
