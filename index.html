@@ -53,13 +53,13 @@ const links = [
   { source:3, target:0, label:"a_{14}", side:"left"  }, // 4→1
 ];
 
-// Label x-positions (closer to edges now)
+// Label x-positions (between vertices, next to edges)
 const LABEL_LEFT_X  = 150 + 55;  // 55px right of node 1
 const LABEL_RIGHT_X = 390 - 55;  // 55px left of node 3
 
 let leakNode = 0;
 
-// Same equations as before (in terms of y_4)
+// Equations (in terms of y_4)
 const eqLookup = {
   0: "y^{(4)}_4 + (\\textcolor{red}{a_{01}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{01}}a_{32}+\\textcolor{red}{a_{01}}a_{43}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}) y''_4 + (\\textcolor{red}{a_{01}}a_{32}a_{43}+a_{21}a_{32}a_{43}) y'_4 = (a_{21}a_{32}a_{43})u_1",
   1: "y^{(4)}_4 + (\\textcolor{red}{a_{02}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{02}}a_{21}+\\textcolor{red}{a_{02}}a_{43}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}) y''_4 + (\\textcolor{red}{a_{02}}a_{21}a_{43}+a_{21}a_{32}a_{43}) y'_4 = (a_{21}a_{32}a_{43})u_1",
@@ -125,16 +125,31 @@ svg.selectAll("line.link")
     this.y2.baseVal.value = t.y - uy*RADIUS;
   });
 
-// ---------- LABELS (vertically aligned & next to edges) ----------
+// ---------- LABELS (vertically aligned & with extra vertical separation) ----------
 svg.selectAll(".edge-label")
   .data(links).enter()
   .append("foreignObject")
   .each(function(d){
-    const s=nodePositions[d.source];
-    const t=nodePositions[d.target];
+    const s = nodePositions[d.source];
+    const t = nodePositions[d.target];
 
-    // Vertical position at the midpoint between the two vertices
-    const midY = (s.y + t.y) / 2;
+    // Base midpoint Y between the two vertices
+    let midY = (s.y + t.y) / 2;
+
+    // Add vertical separation between top and bottom labels
+    const verticalShift = 18;  // tweak 10–30 as desired
+
+    // Move the "upper" edges' labels up
+    if ((d.source === 0 && d.target === 1) ||   // 1→2
+        (d.source === 1 && d.target === 2)) {   // 2→3
+      midY -= verticalShift;
+    }
+
+    // Move the "lower" edges' labels down
+    if ((d.source === 3 && d.target === 0) ||   // 4→1
+        (d.source === 2 && d.target === 3)) {   // 3→4
+      midY += verticalShift;
+    }
 
     // Shared column per side
     const x = (d.side==="left" ? LABEL_LEFT_X : LABEL_RIGHT_X);
