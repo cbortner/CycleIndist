@@ -54,6 +54,9 @@
       { id: 3, label: "4" },
     ];
 
+    // Circle radius (used everywhere)
+    const RADIUS = 25;
+
     // Positions for a 4-cycle (roughly a diamond/square)
     const nodePositions = [
       { x: 150, y: 80 },  // compartment 1 (left)
@@ -131,13 +134,13 @@
         updateEquation();
       });
 
-    nodeGroup.append("circle").attr("r", 25);
+    nodeGroup.append("circle").attr("r", RADIUS);
     nodeGroup.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", 5)
       .text(d => d.label);
 
-    // Links (4-cycle)
+    // Links (4-cycle), trimmed to circle edges
     svg.selectAll("line.link")
       .data(links)
       .enter()
@@ -145,63 +148,134 @@
       .attr("class", "link")
       .attr("stroke", "gray")
       .attr("stroke-width", 2)
-      .attr("x1", d => nodePositions[d.source].x)
-      .attr("y1", d => nodePositions[d.source].y)
-      .attr("x2", d => nodePositions[d.target].x)
-      .attr("y2", d => nodePositions[d.target].y)
+      .attr("x1", d => {
+        const sx = nodePositions[d.source].x;
+        const sy = nodePositions[d.source].y;
+        const tx = nodePositions[d.target].x;
+        const ty = nodePositions[d.target].y;
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len;
+        const uy = dy / len;
+        return sx + ux * RADIUS;
+      })
+      .attr("y1", d => {
+        const sx = nodePositions[d.source].x;
+        const sy = nodePositions[d.source].y;
+        const tx = nodePositions[d.target].x;
+        const ty = nodePositions[d.target].y;
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len;
+        const uy = dy / len;
+        return sy + uy * RADIUS;
+      })
+      .attr("x2", d => {
+        const sx = nodePositions[d.source].x;
+        const sy = nodePositions[d.source].y;
+        const tx = nodePositions[d.target].x;
+        const ty = nodePositions[d.target].y;
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len;
+        const uy = dy / len;
+        return tx - ux * RADIUS;
+      })
+      .attr("y2", d => {
+        const sx = nodePositions[d.source].x;
+        const sy = nodePositions[d.source].y;
+        const tx = nodePositions[d.target].x;
+        const ty = nodePositions[d.target].y;
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len;
+        const uy = dy / len;
+        return ty - uy * RADIUS;
+      })
       .attr("marker-end", "url(#link-arrow)");
 
-    // Edge labels
+    // Edge labels positioned offset perpendicular to the arrow segment
     svg.selectAll(".edge-label")
       .data(links)
       .enter()
       .append("foreignObject")
-      .attr("x", d => (nodePositions[d.source].x + nodePositions[d.target].x) / 2 - 20)
-      .attr("y", d => (nodePositions[d.source].y + nodePositions[d.target].y) / 2 - 15)
-      .attr("width", 40)
-      .attr("height", 30)
-      .append("xhtml:div")
-      .style("text-align", "center")
-      .style("font-size", "14px")
       .each(function(d) {
-        katex.render(d.label, this, { throwOnError: false });
+        const sx = nodePositions[d.source].x;
+        const sy = nodePositions[d.source].y;
+        const tx = nodePositions[d.target].x;
+        const ty = nodePositions[d.target].y;
+
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+
+        // Midpoint of the center-to-center segment
+        const mx = (sx + tx) / 2;
+        const my = (sy + ty) / 2;
+
+        // Unit perpendicular vector (rotated 90 degrees)
+        const px = -dy / len;
+        const py = dx / len;
+
+        // Distance to move label off the arrow
+        const offset = 18; // pixels
+
+        const lx = mx + px * offset;
+        const ly = my + py * offset;
+
+        d3.select(this)
+          .attr("x", lx - 20)
+          .attr("y", ly - 15)
+          .attr("width", 40)
+          .attr("height", 30)
+          .append("xhtml:div")
+          .style("text-align", "center")
+          .style("font-size", "14px")
+          .each(function() {
+            katex.render(d.label, this, { throwOnError: false });
+          });
       });
 
-    // Draw input arrow to compartment 1 (node 1)
+    // Draw input arrow to compartment 1 (node 1) - horizontal from left
     svg.append("line")
-      .attr("x1", nodePositions[0].x - 80)
+      .attr("x1", nodePositions[0].x - RADIUS - 60)
       .attr("y1", nodePositions[0].y)
-      .attr("x2", nodePositions[0].x - 30)
+      .attr("x2", nodePositions[0].x - RADIUS)
       .attr("y2", nodePositions[0].y)
       .attr("stroke", "black")
       .attr("stroke-width", 3)
       .attr("marker-end", "url(#arrow)");
 
     svg.append("text")
-      .attr("x", nodePositions[0].x - 90)
+      .attr("x", nodePositions[0].x - RADIUS - 70)
       .attr("y", nodePositions[0].y - 5)
       .attr("text-anchor", "start")
       .attr("fill", "black")
       .text("in");
 
-    // Draw output probe from compartment 3 (node 3)
+    // Draw output probe from compartment 3 (node 3) - horizontal to the right
     svg.append("line")
-      .attr("x1", nodePositions[2].x)
+      .attr("x1", nodePositions[2].x + RADIUS)
       .attr("y1", nodePositions[2].y)
-      .attr("x2", nodePositions[2].x + 50)
-      .attr("y2", nodePositions[2].y - 30)
+      .attr("x2", nodePositions[2].x + RADIUS + 60)
+      .attr("y2", nodePositions[2].y)
       .attr("stroke", "black")
-      .attr("stroke-width", 3);
+      .attr("stroke-width", 3)
+      .attr("marker-end", "url(#arrow)");
 
     svg.append("circle")
-      .attr("cx", nodePositions[2].x + 50)
-      .attr("cy", nodePositions[2].y - 30)
+      .attr("cx", nodePositions[2].x + RADIUS + 60)
+      .attr("cy", nodePositions[2].y)
       .attr("r", 5)
       .attr("fill", "black");
 
     svg.append("text")
-      .attr("x", nodePositions[2].x + 60)
-      .attr("y", nodePositions[2].y - 35)
+      .attr("x", nodePositions[2].x + RADIUS + 70)
+      .attr("y", nodePositions[2].y - 5)
       .attr("text-anchor", "start")
       .attr("fill", "black")
       .text("out");
@@ -215,9 +289,9 @@
       svg.append("line")
         .attr("class", "leak-indicator")
         .attr("x1", pos.x)
-        .attr("y1", pos.y + 30)
+        .attr("y1", pos.y + RADIUS + 5)
         .attr("x2", pos.x)
-        .attr("y2", pos.y + 65)
+        .attr("y2", pos.y + RADIUS + 40)
         .attr("stroke", "red")
         .attr("stroke-width", 2)
         .attr("marker-end", "url(#leak-arrow)");
@@ -225,7 +299,7 @@
       svg.append("foreignObject")
         .attr("class", "leak-label")
         .attr("x", pos.x - 20)
-        .attr("y", pos.y + 65)
+        .attr("y", pos.y + RADIUS + 40)
         .attr("width", 50)
         .attr("height", 30)
         .append("xhtml:div")
