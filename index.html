@@ -34,9 +34,11 @@
     }
   </style>
 </head>
+
 <body>
   <h2>Skeletal Path Model</h2>
   <p>Click a node to move the leak.</p>
+
   <div style="width: 100%; overflow-x: auto; display: flex; justify-content: center;">
     <svg width="100%" height="220" viewBox="0 0 560 220" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
@@ -47,6 +49,8 @@
   </div>
 
   <script>
+    const RADIUS = 25;
+
     const nodes = [
       { id: 0, label: "1" },
       { id: 1, label: "2" },
@@ -54,26 +58,21 @@
       { id: 3, label: "4" },
     ];
 
-    // Circle radius (used everywhere)
-    const RADIUS = 25;
-
-    // Positions for a 4-cycle (roughly a diamond/square)
     const nodePositions = [
-      { x: 150, y: 80 },  // compartment 1 (left)
-      { x: 270, y: 40 },  // compartment 2 (top)
-      { x: 390, y: 80 },  // compartment 3 (right)
-      { x: 270, y: 120 }, // compartment 4 (bottom)
+      { x: 150, y: 80 },   // 1 (left)
+      { x: 270, y: 40 },   // 2 (top)
+      { x: 390, y: 80 },   // 3 (right)
+      { x: 270, y: 120 },  // 4 (bottom)
     ];
 
-    // Links for the 4-cycle
     const links = [
-      { source: 0, target: 1, label: "a_{21}" }, // 1 → 2
-      { source: 1, target: 2, label: "a_{32}" }, // 2 → 3
-      { source: 2, target: 3, label: "a_{43}" }, // 3 → 4
-      { source: 3, target: 0, label: "a_{14}" }, // 4 → 1 (rename if you prefer a_{41})
+      { source: 0, target: 1, label: "a_{21}" },
+      { source: 1, target: 2, label: "a_{32}" },
+      { source: 2, target: 3, label: "a_{43}" },
+      { source: 3, target: 0, label: "a_{14}" },
     ];
 
-    let leakNode = 0; // Initial leak location
+    let leakNode = 0;
 
     const eqLookup = {
       0: "y^{(4)}_4 + (\\textcolor{red}{a_{01}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{01}}a_{32}+\\textcolor{red}{a_{01}}a_{43}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}) y''_4 + (\\textcolor{red}{a_{01}}a_{32}a_{43}+a_{21}a_{32}a_{43}) y'_4 = (a_{21}a_{32}a_{43})u_1",
@@ -84,268 +83,8 @@
 
     const svg = d3.select("svg");
 
-    // Define arrowhead markers
+    // MARKERS
     const defs = svg.append("defs");
 
     defs.append("marker")
-      .attr("id", "link-arrow")
-      .attr("viewBox", "0 0 10 10")
-      .attr("refX", 10)
-      .attr("refY", 5)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 z")
-      .attr("fill", "gray");
-
-    defs.append("marker")
-      .attr("id", "leak-arrow")
-      .attr("viewBox", "0 0 10 10")
-      .attr("refX", 10)
-      .attr("refY", 5)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 z")
-      .attr("fill", "red");
-
-    defs.append("marker")
-      .attr("id", "arrow")
-      .attr("viewBox", "0 0 10 10")
-      .attr("refX", 10)
-      .attr("refY", 5)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto-start-reverse")
-      .append("path")
-      .attr("d", "M 0 0 L 10 5 L 0 10 z")
-      .attr("fill", "black");
-
-    // Node group
-    const nodeGroup = svg.selectAll("g.node")
-      .data(nodes)
-      .enter()
-      .append("g")
-      .attr("class", "node")
-      .attr("transform", (d) => `translate(${nodePositions[d.id].x}, ${nodePositions[d.id].y})`)
-      .on("click", (event, d) => {
-        leakNode = d.id;
-        drawLeak();
-        updateEquation();
-      });
-
-    nodeGroup.append("circle").attr("r", RADIUS);
-    nodeGroup.append("text")
-      .attr("text-anchor", "middle")
-      .attr("dy", 5)
-      .text(d => d.label);
-
-    // Links (4-cycle), trimmed to circle edges
-    svg.selectAll("line.link")
-      .data(links)
-      .enter()
-      .append("line")
-      .attr("class", "link")
-      .attr("stroke", "gray")
-      .attr("stroke-width", 2)
-      .attr("x1", d => {
-        const sx = nodePositions[d.source].x;
-        const sy = nodePositions[d.source].y;
-        const tx = nodePositions[d.target].x;
-        const ty = nodePositions[d.target].y;
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        const ux = dx / len;
-        const uy = dy / len;
-        return sx + ux * RADIUS;
-      })
-      .attr("y1", d => {
-        const sx = nodePositions[d.source].x;
-        const sy = nodePositions[d.source].y;
-        const tx = nodePositions[d.target].x;
-        const ty = nodePositions[d.target].y;
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        const ux = dx / len;
-        const uy = dy / len;
-        return sy + uy * RADIUS;
-      })
-      .attr("x2", d => {
-        const sx = nodePositions[d.source].x;
-        const sy = nodePositions[d.source].y;
-        const tx = nodePositions[d.target].x;
-        const ty = nodePositions[d.target].y;
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        const ux = dx / len;
-        const uy = dy / len;
-        return tx - ux * RADIUS;
-      })
-      .attr("y2", d => {
-        const sx = nodePositions[d.source].x;
-        const sy = nodePositions[d.source].y;
-        const tx = nodePositions[d.target].x;
-        const ty = nodePositions[d.target].y;
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        const ux = dx / len;
-        const uy = dy / len;
-        return ty - uy * RADIUS;
-      })
-      .attr("marker-end", "url(#link-arrow)");
-
-    // Compute cycle center (average of node positions)
-    const center = {
-      x: d3.mean(nodePositions, p => p.x),
-      y: d3.mean(nodePositions, p => p.y)
-    };
-
-    // Edge labels: positioned closer to center, perpendicular to edge (no overlap with line)
-    svg.selectAll(".edge-label")
-      .data(links)
-      .enter()
-      .append("foreignObject")
-      .each(function(d) {
-        // Source & target centers
-        const sx = nodePositions[d.source].x;
-        const sy = nodePositions[d.source].y;
-        const tx = nodePositions[d.target].x;
-        const ty = nodePositions[d.target].y;
-
-        // Direction vector along edge
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const len = Math.hypot(dx, dy);
-        const ux = dx / len;
-        const uy = dy / len;
-
-        // Trimmed positions (start/end of drawn arrow)
-        const ex1 = sx + ux * RADIUS;
-        const ey1 = sy + uy * RADIUS;
-        const ex2 = tx - ux * RADIUS;
-        const ey2 = ty - uy * RADIUS;
-
-        // Midpoint of the visible edge segment
-        const mx = (ex1 + ex2) / 2;
-        const my = (ey1 + ey2) / 2;
-
-        // Perpendicular unit vector to the edge
-        const px = -dy / len;
-        const py = dx / len;
-
-        // Small offset to keep label off the line
-        const offset = 10;
-
-        // Two candidate positions: one on each side of the edge
-        const cand1 = { x: mx + px * offset, y: my + py * offset };
-        const cand2 = { x: mx - px * offset, y: my - py * offset };
-
-        // Choose the candidate closer to the cycle center (toward center of model)
-        const distSq1 = (cand1.x - center.x) ** 2 + (cand1.y - center.y) ** 2;
-        const distSq2 = (cand2.x - center.x) ** 2 + (cand2.y - center.y) ** 2;
-
-        const chosen = distSq1 < distSq2 ? cand1 : cand2;
-
-        const lx = chosen.x;
-        const ly = chosen.y;
-
-        d3.select(this)
-          .attr("x", lx - 20)
-          .attr("y", ly - 15)
-          .attr("width", 40)
-          .attr("height", 30)
-          .append("xhtml:div")
-          .style("text-align", "center")
-          .style("font-size", "14px")
-          .each(function() {
-            katex.render(d.label, this, { throwOnError: false });
-          });
-      });
-
-    // Draw input arrow to compartment 1 (node 1) - horizontal from left
-    svg.append("line")
-      .attr("x1", nodePositions[0].x - RADIUS - 60)
-      .attr("y1", nodePositions[0].y)
-      .attr("x2", nodePositions[0].x - RADIUS)
-      .attr("y2", nodePositions[0].y)
-      .attr("stroke", "black")
-      .attr("stroke-width", 3)
-      .attr("marker-end", "url(#arrow)");
-
-    svg.append("text")
-      .attr("x", nodePositions[0].x - RADIUS - 70)
-      .attr("y", nodePositions[0].y - 5)
-      .attr("text-anchor", "start")
-      .attr("fill", "black")
-      .text("in");
-
-    // Draw output probe from compartment 3 (node 3) - horizontal to the right, no arrowhead
-    svg.append("line")
-      .attr("x1", nodePositions[2].x + RADIUS)
-      .attr("y1", nodePositions[2].y)
-      .attr("x2", nodePositions[2].x + RADIUS + 60)
-      .attr("y2", nodePositions[2].y)
-      .attr("stroke", "black")
-      .attr("stroke-width", 3); // no marker-end
-
-    svg.append("circle")
-      .attr("cx", nodePositions[2].x + RADIUS + 60)
-      .attr("cy", nodePositions[2].y)
-      .attr("r", 5)
-      .attr("fill", "black");
-
-    svg.append("text")
-      .attr("x", nodePositions[2].x + RADIUS + 70)
-      .attr("y", nodePositions[2].y - 5)
-      .attr("text-anchor", "start")
-      .attr("fill", "black")
-      .text("out");
-
-    function drawLeak() {
-      svg.selectAll("line.leak-indicator").remove();
-      svg.selectAll(".leak-label").remove();
-
-      const pos = nodePositions[leakNode];
-
-      svg.append("line")
-        .attr("class", "leak-indicator")
-        .attr("x1", pos.x)
-        .attr("y1", pos.y + RADIUS + 5)
-        .attr("x2", pos.x)
-        .attr("y2", pos.y + RADIUS + 40)
-        .attr("stroke", "red")
-        .attr("stroke-width", 2)
-        .attr("marker-end", "url(#leak-arrow)");
-
-      svg.append("foreignObject")
-        .attr("class", "leak-label")
-        .attr("x", pos.x - 20)
-        .attr("y", pos.y + RADIUS + 40)
-        .attr("width", 50)
-        .attr("height", 30)
-        .append("xhtml:div")
-        .style("color", "red")
-        .style("font-size", "14px")
-        .style("text-align", "center")
-        .each(function() {
-          katex.render(`a_{0${leakNode + 1}}`, this, { throwOnError: false });
-        });
-    }
-
-    function updateEquation() {
-      const eqDiv = document.getElementById("equation");
-      katex.render(eqLookup[leakNode], eqDiv, { throwOnError: false });
-    }
-
-    // Initial draw
-    drawLeak();
-    updateEquation();
-  </script>
-</body>
-</html>
+      .attr("id", "lin
