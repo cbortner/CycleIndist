@@ -206,7 +206,7 @@
       y: d3.mean(nodePositions, p => p.y)
     };
 
-    // Edge labels: positioned outward but closer to visible edge midpoint
+    // Edge labels: positioned closer to center, perpendicular to edge (no overlap with line)
     svg.selectAll(".edge-label")
       .data(links)
       .enter()
@@ -218,7 +218,7 @@
         const tx = nodePositions[d.target].x;
         const ty = nodePositions[d.target].y;
 
-        // Direction vector
+        // Direction vector along edge
         const dx = tx - sx;
         const dy = ty - sy;
         const len = Math.hypot(dx, dy);
@@ -235,20 +235,25 @@
         const mx = (ex1 + ex2) / 2;
         const my = (ey1 + ey2) / 2;
 
-        // Outward pointing direction (from cycle center)
-        let ox = mx - center.x;
-        let oy = my - center.y;
-        const olen = Math.hypot(ox, oy);
-        if (olen !== 0) {
-          ox /= olen;
-          oy /= olen;
-        }
+        // Perpendicular unit vector to the edge
+        const px = -dy / len;
+        const py = dx / len;
 
-        // Smaller outward offset (closer to the edge)
-        const offset = 14; // tweak 10–20 if you want
+        // Small offset to keep label off the line
+        const offset = 10;
 
-        const lx = mx + ox * offset;
-        const ly = my + oy * offset;
+        // Two candidate positions: one on each side of the edge
+        const cand1 = { x: mx + px * offset, y: my + py * offset };
+        const cand2 = { x: mx - px * offset, y: my - py * offset };
+
+        // Choose the candidate closer to the cycle center (toward center of model)
+        const distSq1 = (cand1.x - center.x) ** 2 + (cand1.y - center.y) ** 2;
+        const distSq2 = (cand2.x - center.x) ** 2 + (cand2.y - center.y) ** 2;
+
+        const chosen = distSq1 < distSq2 ? cand1 : cand2;
+
+        const lx = chosen.x;
+        const ly = chosen.y;
 
         d3.select(this)
           .attr("x", lx - 20)
