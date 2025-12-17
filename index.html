@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skeletal Path Model</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js">drawLeak();
-    updateEquation();
-  </script>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+
   <style>
     body {
       font-family: sans-serif;
@@ -37,7 +38,7 @@
   <h2>Skeletal Path Model</h2>
   <p>Click a node to move the leak.</p>
   <div style="width: 100%; overflow-x: auto; display: flex; justify-content: center;">
-    <svg width="100%" height="180" viewBox="20 0 560 180" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg width="100%" height="180" viewBox="0 0 560 180" preserveAspectRatio="xMidYMid meet"></svg>
   </div>
 
   <div class="eq-box">
@@ -53,10 +54,20 @@
       { id: 3, label: "4" },
     ];
 
+    // Positions for a 4-cycle (roughly a diamond/square)
+    const nodePositions = [
+      { x: 150, y: 80 },  // compartment 1 (left)
+      { x: 270, y: 40 },  // compartment 2 (top)
+      { x: 390, y: 80 },  // compartment 3 (right)
+      { x: 270, y: 120 }, // compartment 4 (bottom)
+    ];
+
+    // Links for the 4-cycle
     const links = [
-      { source: 0, target: 1, label: "a_{21}" },
-      { source: 1, target: 2, label: "a_{32}" },
-      { source: 2, target: 3, label: "a_{43}" },
+      { source: 0, target: 1, label: "a_{21}" }, // 1 → 2
+      { source: 1, target: 2, label: "a_{32}" }, // 2 → 3
+      { source: 2, target: 3, label: "a_{43}" }, // 3 → 4
+      { source: 3, target: 0, label: "a_{14}" }, // 4 → 1 (rename if you prefer a_{41})
     ];
 
     let leakNode = 0; // Initial leak location
@@ -70,7 +81,7 @@
 
     const svg = d3.select("svg");
 
-    // Define arrowhead marker for links and leak
+    // Define arrowhead markers
     svg.append("defs").append("marker")
       .attr("id", "link-arrow")
       .attr("viewBox", "0 0 10 10")
@@ -107,12 +118,13 @@
       .attr("d", "M 0 0 L 10 5 L 0 10 z")
       .attr("fill", "black");
 
+    // Node group
     const nodeGroup = svg.selectAll("g.node")
       .data(nodes)
       .enter()
       .append("g")
       .attr("class", "node")
-      .attr("transform", (d, i) => `translate(${100 + i * 120}, 75)`)
+      .attr("transform", (d) => `translate(${nodePositions[d.id].x}, ${nodePositions[d.id].y})`)
       .on("click", (event, d) => {
         leakNode = d.id;
         drawLeak();
@@ -125,6 +137,7 @@
       .attr("dy", 5)
       .text(d => d.label);
 
+    // Links (4-cycle)
     svg.selectAll("line.link")
       .data(links)
       .enter()
@@ -132,10 +145,10 @@
       .attr("class", "link")
       .attr("stroke", "gray")
       .attr("stroke-width", 2)
-      .attr("x1", d => 100 + d.source * 120 + 25)  // edge of source circle
-      .attr("y1", 75)
-      .attr("x2", d => 100 + d.target * 120 - 25)  // edge of target circle
-      .attr("y2", 75)
+      .attr("x1", d => nodePositions[d.source].x)
+      .attr("y1", d => nodePositions[d.source].y)
+      .attr("x2", d => nodePositions[d.target].x)
+      .attr("y2", d => nodePositions[d.target].y)
       .attr("marker-end", "url(#link-arrow)");
 
     // Edge labels
@@ -143,8 +156,8 @@
       .data(links)
       .enter()
       .append("foreignObject")
-      .attr("x", d => 100 + (d.source + 0.5) * 120 - 20)
-      .attr("y", 45)
+      .attr("x", d => (nodePositions[d.source].x + nodePositions[d.target].x) / 2 - 20)
+      .attr("y", d => (nodePositions[d.source].y + nodePositions[d.target].y) / 2 - 15)
       .attr("width", 40)
       .attr("height", 30)
       .append("xhtml:div")
@@ -154,41 +167,41 @@
         katex.render(d.label, this, { throwOnError: false });
       });
 
-    // Draw input arrow to node 1
+    // Draw input arrow to compartment 1 (node 1)
     svg.append("line")
-      .attr("x1", 50)
-      .attr("y1", 45)
-      .attr("x2", 75)
-      .attr("y2", 70)
+      .attr("x1", nodePositions[0].x - 80)
+      .attr("y1", nodePositions[0].y)
+      .attr("x2", nodePositions[0].x - 30)
+      .attr("y2", nodePositions[0].y)
       .attr("stroke", "black")
       .attr("stroke-width", 3)
       .attr("marker-end", "url(#arrow)");
 
     svg.append("text")
-      .attr("x", 40)
-      .attr("y", 40)
+      .attr("x", nodePositions[0].x - 90)
+      .attr("y", nodePositions[0].y - 5)
       .attr("text-anchor", "start")
       .attr("fill", "black")
       .text("in");
 
-    // Draw output line with circle
+    // Draw output probe from compartment 3 (node 3)
     svg.append("line")
-      .attr("x1", 100 + 3 * 120 + 25)
-      .attr("y1", 75)
-      .attr("x2", 100 + 3 * 120 + 50)
-      .attr("y2", 50)
+      .attr("x1", nodePositions[2].x)
+      .attr("y1", nodePositions[2].y)
+      .attr("x2", nodePositions[2].x + 50)
+      .attr("y2", nodePositions[2].y - 30)
       .attr("stroke", "black")
       .attr("stroke-width", 3);
 
     svg.append("circle")
-      .attr("cx", 100 + 3 * 120 + 50)
-      .attr("cy", 50)
+      .attr("cx", nodePositions[2].x + 50)
+      .attr("cy", nodePositions[2].y - 30)
       .attr("r", 5)
       .attr("fill", "black");
 
     svg.append("text")
-      .attr("x", 100 + 3 * 120 + 60)
-      .attr("y", 45)
+      .attr("x", nodePositions[2].x + 60)
+      .attr("y", nodePositions[2].y - 35)
       .attr("text-anchor", "start")
       .attr("fill", "black")
       .text("out");
@@ -197,20 +210,22 @@
       svg.selectAll("line.leak-indicator").remove();
       svg.selectAll(".leak-label").remove();
 
+      const pos = nodePositions[leakNode];
+
       svg.append("line")
         .attr("class", "leak-indicator")
-        .attr("x1", 100 + leakNode * 120)
-        .attr("y1", 100)
-        .attr("x2", 100 + leakNode * 120)
-        .attr("y2", 135)
+        .attr("x1", pos.x)
+        .attr("y1", pos.y + 30)
+        .attr("x2", pos.x)
+        .attr("y2", pos.y + 65)
         .attr("stroke", "red")
         .attr("stroke-width", 2)
         .attr("marker-end", "url(#leak-arrow)");
 
       svg.append("foreignObject")
         .attr("class", "leak-label")
-        .attr("x", 100 + leakNode * 120 - 20)
-        .attr("y", 135)
+        .attr("x", pos.x - 20)
+        .attr("y", pos.y + 65)
         .attr("width", 50)
         .attr("height", 30)
         .append("xhtml:div")
@@ -226,8 +241,8 @@
       const eqDiv = document.getElementById("equation");
       katex.render(eqLookup[leakNode], eqDiv, { throwOnError: false });
     }
-    
 
+    // Initial draw
     drawLeak();
     updateEquation();
   </script>
