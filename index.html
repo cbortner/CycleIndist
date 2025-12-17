@@ -206,34 +206,46 @@
       y: d3.mean(nodePositions, p => p.y)
     };
 
-    // Edge labels positioned outward from the cycle center
+    // Edge labels: positioned outward but closer to visible edge midpoint
     svg.selectAll(".edge-label")
       .data(links)
       .enter()
       .append("foreignObject")
       .each(function(d) {
-        // Source & target positions
+        // Source & target centers
         const sx = nodePositions[d.source].x;
         const sy = nodePositions[d.source].y;
         const tx = nodePositions[d.target].x;
         const ty = nodePositions[d.target].y;
 
-        // Midpoint of center-to-center link
-        const mx = (sx + tx) / 2;
-        const my = (sy + ty) / 2;
+        // Direction vector
+        const dx = tx - sx;
+        const dy = ty - sy;
+        const len = Math.hypot(dx, dy);
+        const ux = dx / len;
+        const uy = dy / len;
 
-        // Outward vector: from center to midpoint
+        // Trimmed positions (start/end of drawn arrow)
+        const ex1 = sx + ux * RADIUS;
+        const ey1 = sy + uy * RADIUS;
+        const ex2 = tx - ux * RADIUS;
+        const ey2 = ty - uy * RADIUS;
+
+        // Midpoint of the visible edge segment
+        const mx = (ex1 + ex2) / 2;
+        const my = (ey1 + ey2) / 2;
+
+        // Outward pointing direction (from cycle center)
         let ox = mx - center.x;
         let oy = my - center.y;
-
         const olen = Math.hypot(ox, oy);
         if (olen !== 0) {
           ox /= olen;
           oy /= olen;
         }
 
-        // Label offset radius (adjust as needed)
-        const offset = 28;
+        // Smaller outward offset (closer to the edge)
+        const offset = 14; // tweak 10–20 if you want
 
         const lx = mx + ox * offset;
         const ly = my + oy * offset;
