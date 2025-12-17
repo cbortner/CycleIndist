@@ -37,7 +37,7 @@
 <script>
 const RADIUS = 25;
 
-// Node positions
+// Node positions (4-cycle)
 const nodePositions = [
   { x:150, y:120 },   // Node 1
   { x:270, y:60  },   // Node 2
@@ -53,14 +53,19 @@ const links = [
   { source:3, target:0, label:"a_{14}", side:"left"  }, // 4→1
 ];
 
-// Label x-positions
-const LABEL_LEFT_X  = 150 - 75;  // 75px left of node 1
-const LABEL_RIGHT_X = 390 + 75;  // 75px right of node 3
+// Label x-positions (closer to edges now)
+const LABEL_LEFT_X  = 150 - 45;  // 45px left of node 1
+const LABEL_RIGHT_X = 390 + 45;  // 45px right of node 3
 
 let leakNode = 0;
 
-// Equations unchanged (omitted here for space but keep yours)
-const eqLookup = { /* ... your existing dictionary ... */ };
+// Same equations as before (in terms of y_4)
+const eqLookup = {
+  0: "y^{(4)}_4 + (\\textcolor{red}{a_{01}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{01}}a_{32}+\\textcolor{red}{a_{01}}a_{43}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}) y''_4 + (\\textcolor{red}{a_{01}}a_{32}a_{43}+a_{21}a_{32}a_{43}) y'_4 = (a_{21}a_{32}a_{43})u_1",
+  1: "y^{(4)}_4 + (\\textcolor{red}{a_{02}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{02}}a_{21}+\\textcolor{red}{a_{02}}a_{43}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}) y''_4 + (\\textcolor{red}{a_{02}}a_{21}a_{43}+a_{21}a_{32}a_{43}) y'_4 = (a_{21}a_{32}a_{43})u_1",
+  2: "y^{(4)}_4 + (\\textcolor{red}{a_{03}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{03}}a_{21}+\\textcolor{red}{a_{03}}a_{32}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}) y''_4 + (\\textcolor{red}{a_{03}}a_{21}a_{32}+a_{21}a_{32}a_{43}) y'_4 = (a_{21}a_{32}a_{43})u_1",
+  3: "y^{(4)}_4 + (\\textcolor{red}{a_{04}}+a_{21}+a_{32}+a_{43}) y^{(3)}_4 + (\\textcolor{red}{a_{04}}a_{21}+\\textcolor{red}{a_{04}}a_{32}+a_{21}a_{32}+a_{21}a_{43}+a_{32}a_{43}+\\textcolor{red}{a_{04}}a_{43}) y''_4 + (a_{21}a_{32}a_{43}+\\textcolor{red}{a_{04}}a_{32}a_{43}+a_{21}\\textcolor{red}{a_{04}}a_{43}+a_{21}a_{32}\\textcolor{red}{a_{04}}) y'_4 + (\\textcolor{red}{a_{04}}a_{21}a_{32}a_{43})y_4 = (a_{21}a_{32}a_{43})u_1",
+};
 
 const svg = d3.select("svg");
 
@@ -87,10 +92,17 @@ const node = svg.selectAll("g.node")
   .data(nodePositions).enter()
   .append("g").attr("class","node")
   .attr("transform",(d)=>`translate(${d.x},${d.y})`)
-  .on("click",(e,d)=>{ leakNode=nodePositions.indexOf(d); drawLeak(); updateEquation(); });
+  .on("click",(e,d)=>{
+    leakNode=nodePositions.indexOf(d);
+    drawLeak();
+    updateEquation();
+  });
 
 node.append("circle").attr("r",RADIUS);
-node.append("text").text((d,i)=>i+1).attr("dy",5).attr("text-anchor","middle");
+node.append("text")
+  .text((d,i)=>i+1)
+  .attr("dy",5)
+  .attr("text-anchor","middle");
 
 // ---------- EDGES ----------
 svg.selectAll("line.link")
@@ -113,7 +125,7 @@ svg.selectAll("line.link")
     this.y2.baseVal.value = t.y - uy*RADIUS;
   });
 
-// ---------- LABELS (aligned!) ----------
+// ---------- LABELS (vertically aligned & next to edges) ----------
 svg.selectAll(".edge-label")
   .data(links).enter()
   .append("foreignObject")
@@ -121,10 +133,10 @@ svg.selectAll(".edge-label")
     const s=nodePositions[d.source];
     const t=nodePositions[d.target];
 
-    // mid-y between the two nodes
+    // Vertical position at the midpoint between the two vertices
     const midY = (s.y + t.y) / 2;
 
-    // fixed aligned columns
+    // Shared column per side
     const x = (d.side==="left" ? LABEL_LEFT_X : LABEL_RIGHT_X);
     const y = midY;
 
