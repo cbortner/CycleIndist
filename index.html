@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Skeletal Path Model – 5-Cycle</title>
+  <title>Skeletal Path Model – 5-Cycle House</title>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
@@ -30,11 +30,11 @@
 </head>
 
 <body>
-  <h2>Skeletal Path Model (5-Cycle)</h2>
+  <h2>Skeletal Path Model (5-Cycle House Shape)</h2>
   <p>Click a node to move the leak.</p>
 
   <div style="width:100%; display:flex; justify-content:center;">
-    <svg width="100%" height="280" viewBox="0 0 600 280"></svg>
+    <svg width="100%" height="320" viewBox="0 0 600 320"></svg>
   </div>
 
   <div class="eq-box">
@@ -45,17 +45,23 @@
 <script>
 const RADIUS = 25;
 
-// ----- NODE POSITIONS: 5-cycle (rough pentagon) -----
+/* --------------------------
+   NODE POSITIONS (House Shape)
+   Constraints:
+   y1 = y3, y4 = y5,
+   x1 = x5, x3 = x4
+   -------------------------- */
+
 const nodePositions = [
-  { x: 140, y: 140 },  // Node 1 (left-mid)
-  { x: 230, y: 60  },  // Node 2 (upper-left)
-  { x: 350, y: 60  },  // Node 3 (upper-right) -> output
-  { x: 430, y: 150 },  // Node 4 (right-lower)
-  { x: 240, y: 200 },  // Node 5 (lower-left)
+  { x: 200, y: 150 },  // 1 (left middle)
+  { x: 300, y:  80 },  // 2 (roof peak)
+  { x: 400, y: 150 },  // 3 (right middle)
+  { x: 400, y: 220 },  // 4 (bottom right)
+  { x: 200, y: 220 },  // 5 (bottom left)
 ];
 
-// Edges: directed 1→2→3→4→5→1
-// Using a_{ji} notation: flow i→j has label a_{ji}
+// 5-cycle: 1→2→3→4→5→1
+// Using a_{ji} for flow i→j
 const links = [
   { source: 0, target: 1, label: "a_{21}" }, // 1→2
   { source: 1, target: 2, label: "a_{32}" }, // 2→3
@@ -66,18 +72,18 @@ const links = [
 
 let leakNode = 0;
 
-// Placeholder IO equations – you can replace with the correct 5-compartment formulas later
+// Placeholder IO equations (you can replace with actual ones later)
 const eqLookup = {
-  0: "\\text{Input-output equation for leak in compartment 1 (placeholder)}",
-  1: "\\text{Input-output equation for leak in compartment 2 (placeholder)}",
-  2: "\\text{Input-output equation for leak in compartment 3 (placeholder)}",
-  3: "\\text{Input-output equation for leak in compartment 4 (placeholder)}",
-  4: "\\text{Input-output equation for leak in compartment 5 (placeholder)}",
+  0: "\\text{IO equation with leak in compartment 1 (placeholder)}",
+  1: "\\text{IO equation with leak in compartment 2 (placeholder)}",
+  2: "\\text{IO equation with leak in compartment 3 (placeholder)}",
+  3: "\\text{IO equation with leak in compartment 4 (placeholder)}",
+  4: "\\text{IO equation with leak in compartment 5 (placeholder)}",
 };
 
 const svg = d3.select("svg");
 
-// ---------- MARKERS ----------
+/* ---------- MARKERS ---------- */
 const defs = svg.append("defs");
 
 defs.append("marker").attr("id","link-arrow")
@@ -95,26 +101,27 @@ defs.append("marker").attr("id","arrow")
   .attr("markerWidth",6).attr("markerHeight",6).attr("orient","auto-start-reverse")
   .append("path").attr("d","M0 0 L10 5 L0 10 Z").attr("fill","black");
 
-// ---------- NODES ----------
+/* ---------- NODES ---------- */
 const node = svg.selectAll("g.node")
   .data(nodePositions)
   .enter()
   .append("g")
   .attr("class","node")
   .attr("transform", d => `translate(${d.x},${d.y})`)
-  .on("click",(e,d) => {
+  .on("click",(e,d)=>{
     leakNode = nodePositions.indexOf(d);
     drawLeak();
     updateEquation();
   });
 
-node.append("circle").attr("r", RADIUS);
+node.append("circle").attr("r",RADIUS);
+
 node.append("text")
-  .text((d,i) => i+1)
+  .text((d,i)=>i+1)
   .attr("dy",5)
   .attr("text-anchor","middle");
 
-// ---------- EDGES (trimmed to circle edges) ----------
+/* ---------- EDGES (trimmed to circle edges) ---------- */
 svg.selectAll("line.link")
   .data(links)
   .enter()
@@ -138,9 +145,7 @@ svg.selectAll("line.link")
     this.y2.baseVal.value = t.y - uy * RADIUS;
   });
 
-// ---------- EDGE LABELS (outside the cycle) ----------
-
-// Cycle center (for “outward” direction)
+/* ---------- EDGE LABELS (outside the cycle) ---------- */
 const center = {
   x: d3.mean(nodePositions, p => p.x),
   y: d3.mean(nodePositions, p => p.y)
@@ -160,7 +165,7 @@ svg.selectAll(".edge-label")
     const ux = dx / L;
     const uy = dy / L;
 
-    // Trimmed positions
+    // Trimmed endpoints
     const ex1 = s.x + ux * RADIUS;
     const ey1 = s.y + uy * RADIUS;
     const ex2 = t.x - ux * RADIUS;
@@ -170,13 +175,13 @@ svg.selectAll(".edge-label")
     const mx = (ex1 + ex2) / 2;
     const my = (ey1 + ey2) / 2;
 
-    // Outward direction from center to midpoint
+    // Outward direction from center
     let ox = mx - center.x;
     let oy = my - center.y;
     const oLen = Math.hypot(ox,oy);
     if (oLen !== 0) { ox /= oLen; oy /= oLen; }
 
-    const offset = 16; // how far outside the cycle
+    const offset = 18; // how far outside the house
     const lx = mx + ox * offset;
     const ly = my + oy * offset;
 
@@ -193,7 +198,7 @@ svg.selectAll(".edge-label")
       });
   });
 
-// ---------- INPUT (into node 1) ----------
+/* ---------- INPUT (into node 1) ---------- */
 svg.append("line")
   .attr("x1", nodePositions[0].x - RADIUS - 60)
   .attr("y1", nodePositions[0].y)
@@ -208,7 +213,7 @@ svg.append("text")
   .attr("y", nodePositions[0].y - 5)
   .text("in");
 
-// ---------- OUTPUT (from node 3, no arrowhead) ----------
+/* ---------- OUTPUT (from node 3, no arrowhead) ---------- */
 svg.append("line")
   .attr("x1", nodePositions[2].x + RADIUS)
   .attr("y1", nodePositions[2].y)
@@ -228,7 +233,7 @@ svg.append("text")
   .attr("y", nodePositions[2].y - 5)
   .text("out");
 
-// ---------- LEAK ----------
+/* ---------- LEAK INDICATOR ---------- */
 function drawLeak(){
   svg.selectAll(".leak-indicator").remove();
   svg.selectAll(".leak-label").remove();
@@ -237,20 +242,20 @@ function drawLeak(){
 
   svg.append("line")
     .attr("class","leak-indicator")
-    .attr("x1",pos.x)
-    .attr("y1",pos.y + RADIUS + 5)
-    .attr("x2",pos.x)
-    .attr("y2",pos.y + RADIUS + 40)
+    .attr("x1", pos.x)
+    .attr("y1", pos.y + RADIUS + 5)
+    .attr("x2", pos.x)
+    .attr("y2", pos.y + RADIUS + 40)
     .attr("stroke","red")
     .attr("stroke-width",2)
     .attr("marker-end","url(#leak-arrow)");
 
   svg.append("foreignObject")
     .attr("class","leak-label")
-    .attr("x",pos.x - 20)
-    .attr("y",pos.y + RADIUS + 40)
-    .attr("width",50)
-    .attr("height",30)
+    .attr("x", pos.x - 20)
+    .attr("y", pos.y + RADIUS + 40)
+    .attr("width", 50)
+    .attr("height", 30)
     .append("xhtml:div")
     .style("color","red")
     .style("text-align","center")
@@ -260,7 +265,7 @@ function drawLeak(){
     });
 }
 
-// ---------- EQUATION ----------
+/* ---------- EQUATION RENDER ---------- */
 function updateEquation(){
   katex.render(eqLookup[leakNode], document.getElementById("equation"), {
     throwOnError:false
