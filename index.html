@@ -54,8 +54,8 @@ const links = [
 ];
 
 // Label x-positions (closer to edges now)
-const LABEL_LEFT_X  = 150 + 45;  // 45px right of node 1
-const LABEL_RIGHT_X = 390 - 45;  // 45px left of node 3
+const LABEL_LEFT_X  = 150 + 55;  // 55px right of node 1
+const LABEL_RIGHT_X = 390 - 55;  // 55px left of node 3
 
 let leakNode = 0;
 
@@ -134,7 +134,7 @@ svg.selectAll(".edge-label")
     const t=nodePositions[d.target];
 
     // Vertical position at the midpoint between the two vertices
-    const midY = (s.y + t.y) / 1.8;
+    const midY = (s.y + t.y) / 1.7;
 
     // Shared column per side
     const x = (d.side==="left" ? LABEL_LEFT_X : LABEL_RIGHT_X);
